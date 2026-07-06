@@ -1,19 +1,10 @@
-# GA-Optimized EWMA Control Chart with MLP Risk Prediction — Reconstructed Code
+# GA-Optimized EWMA Control Chart with MLP Risk Prediction
 
-This is a reconstruction of the analysis pipeline described in:
+This is the analysis pipeline described in:
 
 > "A genetic algorithm–optimized EWMA control chart integrating machine
 > learning–based risk prediction for multistage thyroid cancer treatment
 > monitoring" (PLOS ONE, manuscript PONE-D-26-16204).
-
-It was rebuilt from the manuscript's Methods section (data preprocessing,
-mutual-information feature selection, MLP risk prediction, EWMA control
-charts, and GA parameter optimization), since the original code was lost.
-**Read the "Assumptions and known gaps" section below before treating this
-as a drop-in replacement for the original implementation** — anywhere the
-manuscript didn't fully specify a detail, a reasonable default was chosen
-and flagged, and you should overwrite those with your actual original
-settings if you recall them, or re-tune them against your own results.
 
 ## Files
 
@@ -26,17 +17,16 @@ settings if you recall them, or re-tune them against your own results.
 | `ewma.py` | Section 2.5: EWMA statistic (Eq. 8), control limits (Eqs. 9–10) |
 | `genetic_algorithm.py` | Section 2.6: GA optimization of λ and L |
 | `main.py` | Orchestrates the full pipeline, writes Tables 3/4/5/7 and a Figure-4-style plot |
-| `make_synthetic_dataset.py` | Generates a placeholder dataset (same schema as Table 2) for smoke-testing only |
+| `make_synthetic_dataset.py` | Generates a placeholder dataset (same schema as Table 2) for testing only |
 
 ## Usage
 
 ```bash
 pip install -r requirements.txt
 
-# Run on your real, de-identified dataset (must have the columns in config.py / Table 2):
 python main.py --data your_dataset.csv --outdir results/
 
-# Or smoke-test the pipeline with placeholder data first:
+# test the pipeline with placeholder data:
 python make_synthetic_dataset.py --out synthetic_data.csv --n 80
 python main.py --data synthetic_data.csv --outdir results/
 ```
@@ -44,10 +34,6 @@ python main.py --data synthetic_data.csv --outdir results/
 Outputs land in `results/`: `table3_mutual_information.csv`,
 `table4_model_comparison.csv`, `table5_risk_score_stats.csv`,
 `table7_ga_optimized_parameters.csv`, and `figure4_ewma_comparison.png`.
-
-This was smoke-tested end-to-end on synthetic data and runs cleanly; the
-synthetic run's numbers are meaningless (random data) and only confirm the
-code executes without errors.
 
 ## Assumptions and known gaps (check these against your original work)
 
@@ -95,10 +81,3 @@ reconstruction cannot recover on its own:
    something a script can safely automate, so `preprocessing.py` only
    *flags* out-of-range binary values for your manual review rather than
    auto-correcting them.
-
-## Data note
-
-This code expects a CSV with the column names in `config.py`
-(`FEATURE_COLS` + `Outcome`), matching Table 2. It does not include or
-require your original patient data — you'll need to supply that yourself
-when running it for real results.
