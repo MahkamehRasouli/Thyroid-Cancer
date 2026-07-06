@@ -1,11 +1,7 @@
 """
 feature_selection.py
 ---------------------
-Implements Section 2.4.1 "Feature selection based on information functions":
-mutual information between each candidate feature and the target outcome
-(Eqs. 1-2). sklearn's mutual_info_classif implements the same entropy /
-mutual-information concept described in the manuscript for a categorical
-target.
+Implements Section 2.4.1 "Feature selection based on information functions"
 """
 
 from __future__ import annotations
