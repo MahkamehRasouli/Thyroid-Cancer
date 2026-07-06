@@ -1,9 +1,9 @@
 """
 make_synthetic_dataset.py
 --------------------------
-Generates a PLACEHOLDER dataset with the same columns, ranges, and rough
+Generates a test dataset with the same columns, ranges, and rough
 summary statistics as Table 2 of the manuscript (N=80 patients). This is
-for smoke-testing the pipeline only -- it does not reproduce the paper's
+for testing the pipeline only and it does not reproduce the paper's
 actual results, since it is not the paper's actual data.
 
 Usage:
