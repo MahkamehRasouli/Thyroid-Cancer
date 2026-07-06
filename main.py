@@ -1,7 +1,7 @@
 """
 main.py
 -------
-End-to-end pipeline reproducing the methodology in:
+End-to-end pipeline methodology in:
 
   "A genetic algorithm-optimized EWMA control chart integrating machine
   learning-based risk prediction for multistage thyroid cancer treatment
@@ -11,12 +11,7 @@ Usage
 -----
     python main.py --data path/to/your_dataset.csv --outdir results/
 
-Your CSV must contain the columns listed in config.FEATURE_COLS plus the
-target column config.TARGET_COL ("Outcome"), matching Table 2 of the
-manuscript. If you no longer have your original data file either, see
-`make_synthetic_dataset.py` in this folder to generate a placeholder
-dataset with the same schema so you can sanity-check that the pipeline runs
-end to end -- do NOT use synthetic data to produce numbers for the paper.
+See `make_synthetic_dataset.py` to generate a test dataset.
 """
 
 from __future__ import annotations
