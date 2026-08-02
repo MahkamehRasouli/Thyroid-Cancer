@@ -2,12 +2,7 @@
 config.py
 ---------
 Central configuration for the pipeline: column names, model hyperparameters,
-and EWMA / GA settings. Values here are taken directly from the manuscript
-(Tables 1, 2, 6 and 7) wherever the manuscript specifies them. Anywhere the
-manuscript is silent (e.g. the exact DNN architecture, the k in k-fold CV),
-a reasonable default is used and flagged with a comment -- check these
-against your own original settings if you recall them, since the paper
-text does not pin them down precisely.
+and EWMA / GA settings.
 """
 
 # ---------------------------------------------------------------------------
@@ -63,11 +58,6 @@ MLP_PARAMS = dict(
     random_state=42,
 )
 
-# NOTE: the manuscript does not specify an architecture for the comparison
-# "DNN" model beyond calling it a deep neural network distinct from the MLP.
-# It is implemented here as a deeper MLPClassifier (3 hidden layers) so that
-# it is architecturally distinguishable from the single-hidden-layer MLP.
-# Swap this out for your original architecture if you recall it.
 DNN_PARAMS = dict(
     hidden_layer_sizes=(64, 32, 16),
     activation="relu",
@@ -77,24 +67,18 @@ DNN_PARAMS = dict(
     random_state=42,
 )
 
-# NOTE: k for k-fold cross-validation is not stated in the manuscript text.
-# 5-fold is the most common default and is used here.
 CV_FOLDS = 5
 RANDOM_STATE = 42
 TEST_SIZE = 0.2
 
 # ---------------------------------------------------------------------------
-# EWMA control chart defaults (manuscript Table 7 / Eqs. 8-10)
+# EWMA control chart (manuscript Table 7 / Eqs. 8-10)
 # ---------------------------------------------------------------------------
 EWMA_LAMBDA_INITIAL = 0.15
 EWMA_L_INITIAL = 3.5
 
 # ---------------------------------------------------------------------------
 # Genetic algorithm settings (manuscript Section 2.6)
-# The manuscript describes the mechanism (population, fitness = number of
-# out-of-control points, selection/crossover/mutation, generations) but does
-# not give exact population size / generation count / mutation rate. Sensible
-# defaults are used below -- tune as needed.
 # ---------------------------------------------------------------------------
 GA_LAMBDA_BOUNDS = (0.01, 1.0)
 GA_L_BOUNDS = (1.0, 5.0)
