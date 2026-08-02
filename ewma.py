@@ -19,9 +19,8 @@ def compute_ewma(x: np.ndarray, lam: float, z0: float | None = None) -> np.ndarr
     x : 1-D array of observed values (e.g. per-patient predicted risk scores
         in time/sequence order)
     lam : smoothing parameter (lambda)
-    z0 : initial EWMA value; defaults to the mean of `x`, matching the
-         manuscript's statement that "the initial value, z0, is typically
-         set to the mean of the historical data."
+    z0 : initial EWMA value; defaults to the mean of `x`, the initial value, z0, is typically
+         set to the mean of the historical data.
     """
     x = np.asarray(x, dtype=float)
     if z0 is None:
@@ -71,10 +70,6 @@ def build_ewma_chart(
 
 def count_out_of_control(x: np.ndarray, mu: float, sigma: float, lam: float, L: float) -> int:
     """Fitness-relevant quantity: number of points falling outside the control limits.
-
-    Matches Section 2.6: "The fitness of each chromosome was evaluated using
-    a fitness function that assesses control chart performance, defined as
-    the number of observations falling outside the control limits."
     """
     chart = build_ewma_chart(x, mu, sigma, lam, L)
     return int(chart["out_of_control"].sum())
