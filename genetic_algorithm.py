@@ -1,10 +1,4 @@
-"""
-genetic_algorithm.py
----------------------
-Implements Section 2.6 "Genetic Algorithm-Based Optimization of the EWMA
-Control Chart": a GA that searches over (lambda, L) to minimize the number
-of out-of-control observations.
-"""
+"""Section 2.6: GA search over (lambda, L) minimizing the out-of-control count."""
 
 from __future__ import annotations
 
@@ -32,7 +26,7 @@ class GAResult:
     best_lambda: float
     best_L: float
     best_fitness: int
-    history: list[float]  # best fitness per generation
+    history: list[float]
 
 
 def _clip(val: float, bounds: tuple[float, float]) -> float:
@@ -52,7 +46,7 @@ def _fitness(chromosome: np.ndarray, x: np.ndarray, mu: float, sigma: float) -> 
 
 def _tournament_select(pop: np.ndarray, fitness: np.ndarray, rng: np.random.Generator, k: int) -> np.ndarray:
     idx = rng.integers(0, len(pop), size=k)
-    best_idx = idx[np.argmin(fitness[idx])]  # lower fitness (fewer OOC points) wins
+    best_idx = idx[np.argmin(fitness[idx])]
     return pop[best_idx].copy()
 
 
@@ -69,11 +63,9 @@ def _crossover(p1: np.ndarray, p2: np.ndarray, rng: np.random.Generator) -> tupl
 def _mutate(chromosome: np.ndarray, rng: np.random.Generator) -> np.ndarray:
     chromosome = chromosome.copy()
     if rng.random() < GA_MUTATION_RATE:
-        chromosome[0] += rng.normal(0, GA_MUTATION_STD)
-        chromosome[0] = _clip(chromosome[0], GA_LAMBDA_BOUNDS)
+        chromosome[0] = _clip(chromosome[0] + rng.normal(0, GA_MUTATION_STD), GA_LAMBDA_BOUNDS)
     if rng.random() < GA_MUTATION_RATE:
-        chromosome[1] += rng.normal(0, GA_MUTATION_STD * 2)  # L has a wider range
-        chromosome[1] = _clip(chromosome[1], GA_L_BOUNDS)
+        chromosome[1] = _clip(chromosome[1] + rng.normal(0, GA_MUTATION_STD * 2), GA_L_BOUNDS)
     return chromosome
 
 
@@ -85,15 +77,11 @@ def optimize_ewma_parameters(
     generations: int = GA_GENERATIONS,
     random_state: int = GA_RANDOM_STATE,
 ) -> GAResult:
-    """Run the GA to find (lambda, L) minimizing the number of out-of-control points.
-
-    This directly implements the procedure described in Section 2.6: random
-    initial population -> fitness = out-of-control count -> tournament
-    selection -> blend crossover -> Gaussian mutation -> elitism -> repeat.
-    """
+    """Search (lambda, L) via GA: random init -> tournament selection -> blend
+    crossover -> Gaussian mutation -> elitism, minimizing the out-of-control count."""
     rng = np.random.default_rng(random_state)
     pop = _init_population(rng, population_size)
-    history = []
+    history: list[float] = []
 
     best_chromosome = None
     best_fitness = np.inf
@@ -107,7 +95,6 @@ def optimize_ewma_parameters(
             best_chromosome = pop[gen_best_idx].copy()
         history.append(best_fitness)
 
-        # Elitism: carry the top GA_ELITISM chromosomes forward unchanged
         elite_idx = np.argsort(fitness)[:GA_ELITISM]
         new_pop = [pop[i].copy() for i in elite_idx]
 
@@ -115,11 +102,9 @@ def optimize_ewma_parameters(
             parent1 = _tournament_select(pop, fitness, rng, GA_TOURNAMENT_SIZE)
             parent2 = _tournament_select(pop, fitness, rng, GA_TOURNAMENT_SIZE)
             child1, child2 = _crossover(parent1, parent2, rng)
-            child1 = _mutate(child1, rng)
-            child2 = _mutate(child2, rng)
-            new_pop.append(child1)
+            new_pop.append(_mutate(child1, rng))
             if len(new_pop) < population_size:
-                new_pop.append(child2)
+                new_pop.append(_mutate(child2, rng))
 
         pop = np.array(new_pop)
 
