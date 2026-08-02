@@ -10,11 +10,6 @@ Implements Section 2.3 "Data Preprocessing" of the manuscript:
   2. Missing value imputation using the mean of the corresponding feature.
   3. Min-Max scaling.
   4. Z-score standardization.
-
-The manuscript applies Min-Max scaling *and then* Z-score standardization
-(Section 2.3). Doing both in sequence is unusual (Z-scoring after Min-Max
-scaling a feature to [0, 1] just re-centers/re-scales it again), but this
-module follows the manuscript's stated order exactly for faithfulness.
 """
 
 from __future__ import annotations
