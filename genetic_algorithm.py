@@ -3,9 +3,7 @@ genetic_algorithm.py
 ---------------------
 Implements Section 2.6 "Genetic Algorithm-Based Optimization of the EWMA
 Control Chart": a GA that searches over (lambda, L) to minimize the number
-of out-of-control observations, using tournament selection, blend
-crossover, and Gaussian mutation, with elitism to preserve the best
-chromosomes across generations.
+of out-of-control observations.
 """
 
 from __future__ import annotations
