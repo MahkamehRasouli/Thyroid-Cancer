@@ -39,7 +39,6 @@ def get_candidate_models() -> dict:
 
 
 def evaluate_model(model, X, y, X_train, X_test, y_train, y_test) -> dict:
-    """Fit on the train split and compute the four metrics reported in Table 4."""
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
 
