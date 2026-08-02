@@ -5,13 +5,7 @@ End-to-end pipeline for:
 "A genetic algorithm-optimized EWMA control chart integrating machine
  learning-based risk prediction for multistage thyroid cancer treatment
  monitoring"
-
-CORRECTION (this version):
-The previous version computed the MLP risk scores but then built the EWMA
-charts from the RAW feature values (`series = df[feature]`), leaving the
-MLP output unused. Per the study design, the EWMA charts must monitor the
-MLP-derived risk values, NOT the raw measurements. This file routes the
-MLP output into the monitoring stage.
+ 
 
 Usage
 -----
@@ -40,22 +34,11 @@ from genetic_algorithm import optimize_ewma_parameters
 from models import compare_models, predict_risk_scores
 from preprocessing import preprocess
 
-# ---------------------------------------------------------------------------
-# DESIGN SWITCH -- set this to match what the MLP actually outputs.
-#   "per_patient" : the MLP returns ONE risk value per patient  -> ONE chart.
-#   "per_feature" : the MLP returns one risk value per monitored feature
-#                   (shape n_patients x n_features) -> one chart per feature,
-#                   matching the six-panel Figure 4 / Tables 5-6.
-# Confirm this with the code that produced the original results.
-# ---------------------------------------------------------------------------
-RISK_SCORE_MODE = "per_feature"   # or "per_patient"
+
+RISK_SCORE_MODE = "per_feature"
 
 
 def _chart_one_series(series: np.ndarray, name: str):
-    """Build initial + GA-optimized EWMA charts for a single monitored series
-    of MLP-derived risk values. Returns (stats, chart_initial, chart_optimized,
-    ga_result). mu/sigma are estimated from the in-control (Phase I) values of
-    the risk-score series itself."""
     series = np.asarray(series, dtype=float)
     mu, sigma = series.mean(), series.std(ddof=0)
 
@@ -113,7 +96,6 @@ def run_pipeline(data_path: str, outdir: str) -> None:
     ga_results = {}
 
     if RISK_SCORE_MODE == "per_patient":
-        # One risk value per patient -> a single EWMA chart of the risk score.
         if risk_scores.ndim != 1:
             raise ValueError(
                 "RISK_SCORE_MODE='per_patient' expects a 1-D risk-score array "
@@ -126,10 +108,6 @@ def run_pipeline(data_path: str, outdir: str) -> None:
         ga_results["MLP risk score"] = ga
 
     elif RISK_SCORE_MODE == "per_feature":
-        # One risk value per monitored feature -> one chart per feature.
-        # Expect risk_scores shaped (n_patients, n_features) aligned to
-        # CONTROL_CHART_FEATURES. Adjust predict_risk_scores() so its columns
-        # correspond to CONTROL_CHART_FEATURES in order.
         risk_df = pd.DataFrame(risk_scores, columns=CONTROL_CHART_FEATURES) \
             if risk_scores.ndim == 2 and risk_scores.shape[1] == len(CONTROL_CHART_FEATURES) \
             else None
