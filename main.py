@@ -1,14 +1,7 @@
-"""
-main.py
--------
-End-to-end pipeline for:
-"A genetic algorithm-optimized EWMA control chart integrating machine
- learning-based risk prediction for multistage thyroid cancer treatment
- monitoring"
- 
+"""End-to-end pipeline: MI feature selection -> MLP risk prediction ->
+GA-optimized EWMA monitoring of the model-derived risk values.
 
-Usage
------
+Usage:
     python main.py --data path/to/your_dataset.csv --outdir results/
 """
 
@@ -22,6 +15,7 @@ import numpy as np
 import pandas as pd
 
 from config import (
+    CONTINUOUS_COLS,
     CONTROL_CHART_FEATURES,
     EWMA_L_INITIAL,
     EWMA_LAMBDA_INITIAL,
@@ -34,18 +28,18 @@ from genetic_algorithm import optimize_ewma_parameters
 from models import compare_models, predict_risk_scores
 from preprocessing import preprocess
 
-
+# Set to match what the MLP outputs:
+#   "per_feature" : (n_patients x n_features) -> one chart per monitored feature
+#   "per_patient" : one risk value per patient -> a single chart
 RISK_SCORE_MODE = "per_feature"
 
 
 def _chart_one_series(series: np.ndarray, name: str):
     series = np.asarray(series, dtype=float)
     mu, sigma = series.mean(), series.std(ddof=0)
-
     chart_initial = build_ewma_chart(series, mu, sigma, EWMA_LAMBDA_INITIAL, EWMA_L_INITIAL)
     ga_result = optimize_ewma_parameters(series, mu, sigma)
     chart_optimized = build_ewma_chart(series, mu, sigma, ga_result.best_lambda, ga_result.best_L)
-
     stats = {"Series": name, "Mean (mu)": mu, "Standard Deviation (sigma)": sigma}
     return stats, chart_initial, chart_optimized, ga_result
 
@@ -54,7 +48,7 @@ def run_pipeline(data_path: str, outdir: str) -> None:
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
 
-    # ---- 1. Load + preprocess (Section 2.2, 2.3) --------------------------
+    # Load and preprocess (Sections 2.2-2.3)
     raw_df = pd.read_csv(data_path)
     missing = [c for c in FEATURE_COLS + [TARGET_COL] if c not in raw_df.columns]
     if missing:
@@ -67,15 +61,15 @@ def run_pipeline(data_path: str, outdir: str) -> None:
         print(prep["invalid_report"])
 
     X = df[FEATURE_COLS]
-    y = raw_df[TARGET_COL]  # target is a class label, left un-scaled
+    y = raw_df[TARGET_COL]
 
-    # ---- 2. Feature selection via mutual information (Section 2.4.1) ------
-    mi_scores = compute_mutual_information(X, y)
+    # Feature selection (Section 2.4.1, Table 3)
+    mi_scores = compute_mutual_information(X, y, continuous_cols=CONTINUOUS_COLS)
     mi_scores.to_csv(outdir / "table3_mutual_information.csv")
     print("\nTable 3 -- Mutual information scores:")
     print(mi_scores)
 
-    # ---- 3. Risk prediction modeling (Section 2.4, Table 4) ---------------
+    # Risk prediction modeling (Section 2.4, Table 4)
     results_df, fitted_models = compare_models(X, y)
     results_df.to_csv(outdir / "table4_model_comparison.csv")
     print("\nTable 4 -- Model comparison:")
@@ -85,21 +79,16 @@ def run_pipeline(data_path: str, outdir: str) -> None:
     best_model = fitted_models[best_model_name]
     print(f"\nBest model by AUC: {best_model_name}")
 
-    # ---- 4. Predicted risk scores -> monitored series (Section 2.5) -------
-    # CORRECTED: the EWMA monitors the MLP-derived risk values, not raw features.
-    risk_scores = predict_risk_scores(best_model, X)
-    risk_scores = np.asarray(risk_scores, dtype=float)
+    # Monitored series = MLP-derived risk values (Section 2.5)
+    risk_scores = np.asarray(predict_risk_scores(best_model, X), dtype=float)
 
-    chart_stats = []
-    charts_initial = {}
-    charts_optimized = {}
-    ga_results = {}
+    chart_stats, charts_initial, charts_optimized, ga_results = [], {}, {}, {}
 
     if RISK_SCORE_MODE == "per_patient":
         if risk_scores.ndim != 1:
             raise ValueError(
-                "RISK_SCORE_MODE='per_patient' expects a 1-D risk-score array "
-                f"(one value per patient); got shape {risk_scores.shape}."
+                "RISK_SCORE_MODE='per_patient' expects a 1-D risk-score array; "
+                f"got shape {risk_scores.shape}."
             )
         stats, c_init, c_opt, ga = _chart_one_series(risk_scores, "MLP risk score")
         chart_stats.append(stats)
@@ -108,16 +97,17 @@ def run_pipeline(data_path: str, outdir: str) -> None:
         ga_results["MLP risk score"] = ga
 
     elif RISK_SCORE_MODE == "per_feature":
-        risk_df = pd.DataFrame(risk_scores, columns=CONTROL_CHART_FEATURES) \
-            if risk_scores.ndim == 2 and risk_scores.shape[1] == len(CONTROL_CHART_FEATURES) \
-            else None
-        if risk_df is None:
+        aligned = (
+            risk_scores.ndim == 2
+            and risk_scores.shape[1] == len(CONTROL_CHART_FEATURES)
+        )
+        if not aligned:
             raise ValueError(
-                "RISK_SCORE_MODE='per_feature' expects risk_scores with shape "
+                "RISK_SCORE_MODE='per_feature' expects risk_scores of shape "
                 f"(n_patients, {len(CONTROL_CHART_FEATURES)}) aligned to "
-                f"CONTROL_CHART_FEATURES; got shape {risk_scores.shape}. "
-                "Update predict_risk_scores() to return per-feature MLP risk values."
+                f"CONTROL_CHART_FEATURES; got shape {risk_scores.shape}."
             )
+        risk_df = pd.DataFrame(risk_scores, columns=CONTROL_CHART_FEATURES)
         for feature in CONTROL_CHART_FEATURES:
             stats, c_init, c_opt, ga = _chart_one_series(risk_df[feature].to_numpy(), feature)
             chart_stats.append(stats)
@@ -127,9 +117,8 @@ def run_pipeline(data_path: str, outdir: str) -> None:
     else:
         raise ValueError(f"Unknown RISK_SCORE_MODE: {RISK_SCORE_MODE!r}")
 
-    # ---- 5. Tables 5 and 7 ------------------------------------------------
+    # Tables 5 and 7
     pd.DataFrame(chart_stats).to_csv(outdir / "table5_risk_score_stats.csv", index=False)
-
     ga_summary = pd.DataFrame(
         {
             name: {
@@ -146,19 +135,17 @@ def run_pipeline(data_path: str, outdir: str) -> None:
     print("\nTable 7 -- GA-optimized parameters:")
     print(ga_summary)
 
-    # ---- 6. Figure 4 -- before/after comparison plots ---------------------
+    # Figure 4 -- before/after comparison
     n = len(charts_initial)
     fig, axes = plt.subplots(n, 1, figsize=(8, 4 * n))
     if n == 1:
         axes = [axes]
     for ax, name in zip(axes, charts_initial.keys()):
-        c_init = charts_initial[name]
-        c_opt = charts_optimized[name]
+        c_init, c_opt = charts_initial[name], charts_optimized[name]
         ax.plot(c_init["ewma"], color="orange", label=f"Original ($\\lambda$={EWMA_LAMBDA_INITIAL}, L={EWMA_L_INITIAL})")
         ax.plot(c_opt["ewma"], color="green", label="GA-optimized")
-        ax.plot(c_init["ucl"], color="red", linestyle="--", linewidth=0.8, label="Control limits")
-        if "lcl" in c_init:
-            ax.plot(c_init["lcl"], color="red", linestyle="--", linewidth=0.8)
+        ax.plot(c_init["ucl"], color="red", linewidth=0.8, label="Control limits")
+        ax.plot(c_init["lcl"], color="red", linewidth=0.8)
         ax.set_title(f"EWMA Control Chart -- {name} (MLP risk values)")
         ax.set_xlabel("Patient index")
         ax.set_ylabel("MLP risk value")
@@ -172,7 +159,7 @@ def run_pipeline(data_path: str, outdir: str) -> None:
 def _parse_args():
     parser = argparse.ArgumentParser(description="Run the GA-optimized EWMA + MLP risk pipeline.")
     parser.add_argument("--data", required=True, help="Path to input CSV (see config.py for required columns).")
-    parser.add_argument("--outdir", default="results", help="Directory to write output tables/figures to.")
+    parser.add_argument("--outdir", default="results", help="Directory to write outputs to.")
     return parser.parse_args()
 
 
